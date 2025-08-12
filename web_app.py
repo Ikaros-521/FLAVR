@@ -36,6 +36,8 @@ MODEL_CONFIGS = {
     }
 }
 
+
+
 class FLAVRInterpolator:
     def __init__(self):
         self.models = {}  # 缓存所有加载的模型
@@ -183,13 +185,54 @@ class FLAVRInterpolator:
             new_w = 8 * (W // 8)
         else:
             new_h, new_w = target_size
-            
+        
+        print(f"原始尺寸: {H}x{W}, 调整后尺寸: {new_h}x{new_w}")
+        
+        # 检查内存需求并给出警告
+        estimated_memory_gb = T * new_h * new_w * 3 * 4 / (1024**3)  # 转换为GB
+        print(f"预估内存需求: {estimated_memory_gb:.2f} GB")
+        
+        if estimated_memory_gb > 4:  # 超过4GB给出警告
+            print(f"⚠️  警告: 预估内存需求 {estimated_memory_gb:.2f} GB 较高，可能导致内存不足")
+        
         transform = transforms.Compose([
             ToTensorVideo(),
             Resize((new_h, new_w))
         ])
         
-        video_tensor = transform(video_tensor)
+        try:
+            video_tensor = transform(video_tensor)
+        except RuntimeError as e:
+            if "not enough memory" in str(e):
+                # 计算建议的分辨率
+                available_memory_gb = 2  # 假设可用内存2GB
+                scale_factor = (available_memory_gb / estimated_memory_gb) ** 0.5
+                suggested_h = int(H * scale_factor)
+                suggested_w = int(W * scale_factor)
+                suggested_h = 8 * (suggested_h // 8)
+                suggested_w = 8 * (suggested_w // 8)
+                
+                error_msg = f"""
+❌ 内存不足错误!
+
+当前视频信息:
+- 原始尺寸: {H}x{W}
+- 目标尺寸: {new_h}x{new_w}
+- 帧数: {T}
+- 预估内存需求: {estimated_memory_gb:.2f} GB
+
+💡 解决方案:
+1. 使用更小的视频文件
+2. 手动设置较小的目标尺寸 (建议: {suggested_h}x{suggested_w})
+3. 裁剪视频长度
+4. 增加系统内存
+
+请重新上传较小的视频或手动设置目标尺寸。
+                """
+                raise Exception(error_msg)
+            else:
+                raise e
+        
         return video_tensor, (new_h, new_w)
     
     def make_image(self, img):
@@ -393,6 +436,11 @@ def create_interface():
         - **视频预览**: 支持视频上传前预览
         - **智能内存管理**: 按需加载模型，切换时自动释放内存
         - **实时状态监控**: 显示内存使用和模型状态
+        
+        ### ⚠️ 内存使用提示:
+        - 处理大分辨率视频时可能需要大量内存
+        - 系统会自动显示预估内存需求
+        - 如遇内存不足，请使用较小的视频文件或降低分辨率
         """)
         
         # 检查模型文件状态
@@ -521,6 +569,8 @@ def create_interface():
         - 切换模型时会自动释放其他模型内存，提高系统性能
         - **视频要求**: 至少需要4帧才能进行插值处理
         - **帧率说明**: 输出帧率 = 原始帧率 × 插值倍数 (如30FPS输入，2x插值输出60FPS)
+        - **内存要求**: 大分辨率视频处理需要充足内存，系统会显示预估内存需求
+        - **内存不足时**: 请使用较小的视频文件或降低视频分辨率
         """)
     
     return demo
