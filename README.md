@@ -1,4 +1,7 @@
 # FLAVR: Flow-Agnostic Video Representations for Fast Frame Interpolation
+
+<img width="3444" height="1854" alt="image" src="https://github.com/user-attachments/assets/82b73276-3290-45dc-a89a-c05b791568d1" />
+
 ## WACV 2023 (Best Paper Finalist)
 
 ![Eg1](./figures/baloon.gif)
