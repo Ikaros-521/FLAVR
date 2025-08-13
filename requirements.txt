@@ -11,3 +11,4 @@ matplotlib>=3.3.0
 scikit-image>=0.17.0
 requests>=2.25.0
 av>=9.0.0 
+psutil
